@@ -1,0 +1,679 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SPAI — Story Pipeline AI</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    :root{
+      --bg: #0e1116; --card:#121722; --muted:#7a8699; --ink:#eaf0ff; --accent:#3b82f6;
+    }
+    html, body { background: var(--bg); color: var(--ink); }
+    .navbar { background: linear-gradient(90deg, #0f172a 0%, #111827 100%); }
+    .brand-grad { background: linear-gradient(90deg,#60a5fa,#a78bfa); -webkit-background-clip:text; background-clip:text; color: transparent; }
+    .card { background: rgba(18,23,34,.85); border: 1px solid rgba(255,255,255,.06); backdrop-filter: blur(6px); }
+    .form-control, .form-select { background: #0b1320; border-color: #273248; color: var(--ink); }
+    .form-control:focus, .form-select:focus { border-color: var(--accent); box-shadow: 0 0 0 .2rem rgba(59,130,246,.25); }
+    .badge-soft { background: rgba(59,130,246,.15); border:1px solid rgba(59,130,246,.35); color:#cfe0ff; }
+    .step { display:flex; gap:.75rem; align-items:center; color:#c9d7ff; }
+    .step .num { width:28px; height:28px; border-radius:50%; display:grid; place-items:center; background:#0a1020; border:1px solid #2c3755; }
+    .muted { color: var(--muted) !important; }
+    .code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    .img-thumb { width: 100%; height: 220px; object-fit: cover; border-radius: .75rem; border:1px solid rgba(255,255,255,.08); }
+    .scroll-y { max-height: 60vh; overflow:auto; }
+    .pointer { cursor: pointer; }
+    .toast-container { z-index: 1080; }
+    .kv { font-size:.9rem; }
+    h5{ color: rgb(163, 191, 216);}
+    label{ color: rgb(123, 145, 165);}
+    .form-control, .form-select, .form-textarea, input { color: rgb(88, 124, 158); }
+    input ::placeholder {color: rgb(88, 124, 158); }
+  </style>
+</head>
+<body>
+  <nav class="navbar navbar-dark py-3 shadow-sm">
+    <div class="container-fluid">
+      <a class="navbar-brand fw-semibold" href="#">
+        <i class="bi bi-stars me-2"></i>
+        <span class="brand-grad">SPAI</span>
+        <span class="ms-2 text-secondary">Story Pipeline AI</span>
+      </a>
+      <div class="d-flex align-items-center gap-2">
+        <button id="btnTest" class="btn btn-outline-light btn-sm"><i class="bi bi-activity me-1"></i> Test Connections</button>
+        <button class="btn btn-primary btn-sm" data-bs-toggle="offcanvas" data-bs-target="#settings">
+          <i class="bi bi-gear me-1"></i> Settings
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container py-4">
+    <!-- Stepper header -->
+    <div class="row g-3 mb-2">
+      <div class="col-12 col-md-6">
+        <div class="card p-3">
+          <div class="d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center gap-3">
+              <div class="step"><div class="num">0</div><div>Idea</div></div>
+              <div class="step"><div class="num">1</div><div>Title + Story</div></div>
+              <div class="step"><div class="num">2</div><div>Scenes</div></div>
+              <div class="step"><div class="num">3</div><div>Images</div></div>
+              <div class="step"><div class="num">4</div><div>Illustrated Script</div></div>
+            </div>
+            <span class="badge badge-soft">Bootstrap 5 • HTML5 • CSS3</span>
+          </div>
+        </div>
+      </div>
+      <div class="col-12 col-md-6">
+        <div class="card p-3">
+          <div class="row g-2">
+            <div class="col-6 col-md-4">
+              <div class="kv text-secondary">LLM</div>
+              <div class="code" id="kvLLM">—</div>
+            </div>
+            <div class="col-6 col-md-4">
+              <div class="kv text-secondary">Image Engine</div>
+              <div class="code" id="kvSD">—</div>
+            </div>
+            <div class="col-12 col-md-4">
+              <div class="kv text-secondary">Aspect</div>
+              <div class="code" id="kvAspect">16:9</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-3">
+      <!-- Left column: inputs -->
+      <div class="col-12 col-lg-5">
+        <!-- Step 0: Idea -->
+        <div class="card p-3 mb-3">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <h5 class="mb-0"><i class="bi bi-lightbulb me-2"></i>Step 0 — Story Idea</h5>
+            <button class="btn btn-sm btn-outline-secondary" id="btnIdeaSample">Sample</button>
+          </div>
+          <textarea id="idea" class="form-control" rows="5" placeholder="Describe your idea... (e.g., A gentle elephant wandering through a bustling Indian street makes friends and changes a city’s day)"></textarea>
+          <div class="d-flex gap-2 mt-3">
+            <button id="btnGenStory" class="btn btn-primary"><i class="bi bi-magic me-1"></i> Generate Title & Story</button>
+            <button id="btnClearAll" class="btn btn-outline-danger"><i class="bi bi-trash3 me-1"></i> Reset</button>
+          </div>
+        </div>
+
+        <!-- Step 2: Scenes setup -->
+        <div class="card p-3 mb-3">
+          <h5 class="mb-3"><i class="bi bi-film me-2"></i>Step 2 — Scene Plan</h5>
+          <div class="row g-2 align-items-end">
+            <div class="col-4">
+              <label class="form-label">Scene count</label>
+              <input id="sceneCount" type="number" min="1" value="6" class="form-control" />
+            </div>
+            <div class="col-4">
+              <label class="form-label">Min seconds/scene</label>
+              <input id="minSec" type="number" min="3" value="6" class="form-control" />
+            </div>
+            <div class="col-4">
+              <label class="form-label">Aspect</label>
+              <select id="aspect" class="form-select">
+                <option value="16:9" selected>16:9 (landscape)</option>
+                <option value="9:16">9:16 (vertical)</option>
+                <option value="1:1">1:1 (square)</option>
+              </select>
+            </div>
+          </div>
+          <div class="d-flex gap-2 mt-3">
+            <button id="btnGenScenes" class="btn btn-primary"><i class="bi bi-diagram-3 me-1"></i> Generate Scenes</button>
+            <button id="btnScenesFromTitle" class="btn btn-outline-info"><i class="bi bi-magic me-1"></i> Scenes from Title</button>
+          </div>
+        </div>
+
+        <!-- Step 3: Images config -->
+        <div class="card p-3 mb-3">
+          <h5 class="mb-3"><i class="bi bi-image me-2"></i>Step 3 — Image Generation</h5>
+          <div class="row g-2">
+            <div class="col-4">
+              <label class="form-label">Width</label>
+              <input id="imgW" type="number" class="form-control" value="1280" />
+            </div>
+            <div class="col-4">
+              <label class="form-label">Height</label>
+              <input id="imgH" type="number" class="form-control" value="720" />
+            </div>
+            <div class="col-4">
+              <label class="form-label">Steps</label>
+              <input id="sdSteps" type="number" class="form-control" value="28" />
+            </div>
+            <div class="col-12">
+              <label class="form-label">Negative Prompt</label>
+              <input id="negPrompt" type="text" class="form-control" value="blurry, low-res, extra fingers, distorted anatomy, watermark, text, logo" />
+            </div>
+          </div>
+          <div class="d-flex gap-2 mt-3">
+            <button id="btnGenAllImages" class="btn btn-primary"><i class="bi bi-images me-1"></i> Generate All Scene Images</button>
+            <button id="btnStop" class="btn btn-outline-warning"><i class="bi bi-stop-circle me-1"></i> Stop</button>
+          </div>
+          <div class="form-text text-secondary mt-2">Uses Stable Diffusion (Automatic1111 API). Configure endpoint in Settings.</div>
+        </div>
+
+        <!-- Step 4: Export -->
+        <div class="card p-3">
+          <h5 class="mb-3"><i class="bi bi-journal-text me-2"></i>Step 4 — Export</h5>
+          <div class="d-flex gap-2">
+            <button id="btnBuildScript" class="btn btn-success"><i class="bi bi-journal-richtext me-1"></i> Build Illustrated Script</button>
+            <button id="btnDownloadHTML" class="btn btn-outline-light" disabled><i class="bi bi-download me-1"></i> Download HTML</button>
+            <button id="btnDownloadJSON" class="btn btn-outline-info" disabled><i class="bi bi-code-square me-1"></i> Download JSON</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right column: live outputs -->
+      <div class="col-12 col-lg-7">
+        <!-- Step 1 Output -->
+        <div class="card p-3 mb-3">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <h5 class="mb-0"><i class="bi bi-type h5 me-2"></i>Step 1 — Title & Story</h5>
+            <div>
+              <button id="btnEditStory" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil-square me-1"></i>Edit</button>
+            </div>
+          </div>
+          <div>
+            <input id="title" class="form-control mb-2" placeholder="Story title" />
+            <textarea id="story" class="form-control" rows="6" placeholder="The story will appear here..."></textarea>
+          </div>
+        </div>
+
+        <!-- Step 2 Output: Scenes table -->
+        <div class="card p-3 mb-3">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <h5 class="mb-0"><i class="bi bi-layout-text-sidebar-reverse me-2"></i>Scenes</h5>
+            <div class="d-flex gap-2">
+              <button id="btnAddScene" class="btn btn-sm btn-outline-light"><i class="bi bi-plus-circle me-1"></i>Add</button>
+              <button id="btnClearScenes" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash3 me-1"></i>Clear</button>
+            </div>
+          </div>
+          <div class="scroll-y">
+            <table class="table table-dark table-sm align-middle">
+              <thead>
+                <tr>
+                  <th style="width:60px">#</th>
+                  <th>Title</th>
+                  <th style="width:100px">Seconds</th>
+                  <th>Description</th>
+                  <th>Image Prompt</th>
+                  <th style="width:140px">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="sceneTable"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Step 3 Output: Images grid -->
+        <div class="card p-3 mb-3">
+          <h5 class="mb-3"><i class="bi bi-collection me-2"></i>Scene Images</h5>
+          <div id="imagesGrid" class="row g-3"></div>
+        </div>
+
+        <!-- Step 4 Output: Script preview -->
+        <div class="card p-3">
+          <h5 class="mb-3"><i class="bi bi-book-half me-2"></i>Illustrated Script Preview</h5>
+          <div id="scriptPreview" class="scroll-y"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Settings Offcanvas -->
+  <div class="offcanvas offcanvas-end text-bg-dark" tabindex="-1" id="settings" aria-labelledby="settingsLabel" style="width: 420px;">
+    <div class="offcanvas-header">
+      <h5 class="offcanvas-title" id="settingsLabel"><i class="bi bi-gear me-2"></i>Settings</h5>
+      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body">
+      <h6 class="text-uppercase text-secondary">LLM (Ollama)</h6>
+      <div class="mb-2">
+        <label class="form-label">Ollama Base URL</label>
+        <input id="ollamaBase" type="text" class="form-control" value="http://localhost:11434" />
+      </div>
+      <div class="mb-4">
+        <label class="form-label">Model</label>
+        <input id="ollamaModel" type="text" class="form-control" value="llama3.1:latest" />
+        <div class="form-text">Ensure the model is pulled locally (e.g., <span class="code">ollama pull llama3.1</span>).</div>
+      </div>
+
+      <h6 class="text-uppercase text-secondary">Image Engine</h6>
+      <div class="mb-2">
+        <label class="form-label">Provider</label>
+        <select id="imgProvider" class="form-select">
+          <option value="a1111" selected>Stable Diffusion (Automatic1111 API)</option>
+        </select>
+      </div>
+      <div class="mb-2">
+        <label class="form-label">API Base URL</label>
+        <input id="sdBase" type="text" class="form-control" value="http://127.0.0.1:7860" />
+        <div class="form-text">Start A1111 with API enabled. Example: <span class="code">webui-user.bat --api --listen</span></div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Sampler (optional)</label>
+        <input id="sampler" type="text" class="form-control" value="DPM++ 2M Karras" />
+      </div>
+
+      <div class="d-flex gap-2">
+        <button id="btnSaveSettings" class="btn btn-primary w-100"><i class="bi bi-save me-1"></i> Save</button>
+        <button id="btnDefaults" class="btn btn-outline-light w-100"><i class="bi bi-arrow-counterclockwise me-1"></i> Defaults</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container position-fixed top-0 end-0 p-3"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // --- State ---
+    const state = {
+      idea: '',
+      title: '',
+      story: '',
+      scenes: [], // {number,title,description,durationSec,imagePrompt, imgDataUrl, seed}
+      cfg: {
+        ollamaBase: localStorage.getItem('spai_ollamaBase') || 'http://localhost:11434',
+        ollamaModel: localStorage.getItem('spai_ollamaModel') || 'llama3.2:latest',
+        sdProvider: localStorage.getItem('spai_sdProvider') || 'a1111',
+        sdBase: localStorage.getItem('spai_sdBase') || 'http://127.0.0.1:7860',
+        sampler: localStorage.getItem('spai_sampler') || 'DPM++ 2M Karras',
+      },
+      aspect: '16:9',
+      aborter: null,
+    };
+
+    // UI refs
+    const el = id => document.getElementById(id);
+    const sceneTable = el('sceneTable');
+    const imagesGrid = el('imagesGrid');
+    const scriptPreview = el('scriptPreview');
+
+    // Init settings UI
+    function syncSettingsUI(){
+      el('ollamaBase').value = state.cfg.ollamaBase;
+      el('ollamaModel').value = state.cfg.ollamaModel;
+      el('imgProvider').value = state.cfg.sdProvider;
+      el('sdBase').value = state.cfg.sdBase;
+      el('sampler').value = state.cfg.sampler;
+      el('kvLLM').textContent = state.cfg.ollamaModel;
+      el('kvSD').textContent = state.cfg.sdProvider + ' @ ' + new URL(state.cfg.sdBase).host;
+      el('kvAspect').textContent = state.aspect;
+    }
+
+    function saveSettings(){
+      state.cfg.ollamaBase = el('ollamaBase').value.trim();
+      state.cfg.ollamaModel = el('ollamaModel').value.trim();
+      state.cfg.sdProvider = el('imgProvider').value;
+      state.cfg.sdBase = el('sdBase').value.trim();
+      state.cfg.sampler = el('sampler').value.trim();
+      localStorage.setItem('spai_ollamaBase', state.cfg.ollamaBase);
+      localStorage.setItem('spai_ollamaModel', state.cfg.ollamaModel);
+      localStorage.setItem('spai_sdProvider', state.cfg.sdProvider);
+      localStorage.setItem('spai_sdBase', state.cfg.sdBase);
+      localStorage.setItem('spai_sampler', state.cfg.sampler);
+      syncSettingsUI();
+      toast('Settings saved', 'success');
+    }
+
+    function resetDefaults(){
+      localStorage.removeItem('spai_ollamaBase');
+      localStorage.removeItem('spai_ollamaModel');
+      localStorage.removeItem('spai_sdProvider');
+      localStorage.removeItem('spai_sdBase');
+      localStorage.removeItem('spai_sampler');
+      state.cfg = { ollamaBase:'http://localhost:11434', ollamaModel:'llama3.1:latest', sdProvider:'a1111', sdBase:'http://127.0.0.1:7860', sampler:'DPM++ 2M Karras' };
+      syncSettingsUI();
+      toast('Defaults restored', 'info');
+    }
+
+    // Toast helper
+    function toast(msg, type='info'){
+      const box = document.querySelector('.toast-container');
+      const t = document.createElement('div');
+      t.className = `toast align-items-center text-bg-${type} border-0`;
+      t.role = 'alert'; t.ariaLive='assertive'; t.ariaAtomic='true';
+      t.innerHTML = `<div class="d-flex"><div class="toast-body">${msg}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>`;
+      box.appendChild(t);
+      const inst = new bootstrap.Toast(t, {delay: 2500});
+      inst.show();
+      t.addEventListener('hidden.bs.toast', ()=> t.remove());
+    }
+
+    // Fetch with timeout / abort
+    async function http(url, options={}, timeoutMs=120000){
+      const controller = new AbortController();
+      const id = setTimeout(()=> controller.abort(), timeoutMs);
+      options.signal = controller.signal;
+      try{
+        const res = await fetch(url, options);
+        clearTimeout(id);
+        if(!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+        return res;
+      } catch(err){
+        clearTimeout(id);
+        throw err;
+      }
+    }
+
+    // --- Ollama LLM calls ---
+    async function ollamaGenerate(prompt){
+      const url = `${state.cfg.ollamaBase.replace(/\/$/,'')}/api/generate`;
+      const body = { model: state.cfg.ollamaModel, prompt, stream: false, options: { temperature: 0.7 } };
+      const res = await http(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) }, 180000);
+      const json = await res.json();
+      if(!json || typeof json.response !== 'string') throw new Error('Unexpected Ollama response');
+      return json.response.trim();
+    }
+
+    function requireIdea(){
+      const v = el('idea').value.trim();
+      if(!v){ toast('Please enter your story idea first.', 'warning'); throw new Error('No idea'); }
+      state.idea = v; return v;
+    }
+
+    function tryParseJSON(text){
+      try { return JSON.parse(text); } catch { return null; }
+    }
+
+    // Step 1: Generate Title + Story
+    async function doGenerateStory(){
+      const idea = requireIdea();
+      setBusy(el('btnGenStory'));
+      const prompt = `You are a creative writer. Generate a compelling, family-friendly story TITLE and a short STORY (2–4 paragraphs) based on the IDEA below.\n\nReturn ONLY valid JSON with keys: {\n  "title": string,\n  "story": string\n}.\nNo markdown. No extra commentary.\n\nIDEA:\n${idea}`;
+      try{
+        const out = await ollamaGenerate(prompt);
+        const json = tryParseJSON(out);
+        if(json && json.title && json.story){
+          el('title').value = json.title; state.title = json.title;
+          el('story').value = json.story; state.story = json.story;
+          toast('Title & story generated.', 'success');
+        } else {
+          // graceful fallback: put raw text in story, synthesize title
+          el('title').value = state.title || 'Untitled Story';
+          el('story').value = out;
+          state.story = out;
+          toast('Received non-JSON response. Used raw text.', 'warning');
+        }
+      } catch(err){
+        console.error(err); toast('LLM error: ' + err.message, 'danger');
+      } finally { clearBusy(el('btnGenStory')); }
+    }
+
+    // Step 2: Scenes generation
+    function aspectToWH(aspect){
+      switch(aspect){
+        case '9:16': return {w: 768, h: 1344};
+        case '1:1': return {w: 1024, h: 1024};
+        default: return {w: 1280, h: 720};
+      }
+    }
+
+    async function doGenerateScenes(fromTitle=false){
+      const count = Math.max(1, parseInt(el('sceneCount').value||6,10));
+      const minSec = Math.max(3, parseInt(el('minSec').value||6,10));
+      state.aspect = el('aspect').value;
+      syncSettingsUI();
+
+      const basis = fromTitle ? (el('title').value || 'Untitled') : (el('story').value || state.story);
+      if(!basis){ toast('Please generate or enter a story/title first.', 'warning'); return; }
+
+      setBusy(el('btnGenScenes'));
+      const prompt = `Split the ${fromTitle? 'title' : 'story'} below into EXACTLY ${count} cinematic scenes.\nEach scene must include: number (1..${count}), title, description (2–3 sentences), durationSec (>=${minSec}), and imagePrompt (a detailed Stable Diffusion prompt in English describing subject, setting, mood, lighting, composition, camera, style; avoid copyrighted names; include phrases like "highly detailed, photoreal, 8k").\nReturn ONLY a JSON array of scenes.\n\n${fromTitle?'TITLE':'STORY'}:\n${basis}`;
+      try{
+        const out = await ollamaGenerate(prompt);
+        const scenes = tryParseJSON(out);
+        if(Array.isArray(scenes) && scenes.length){
+          state.scenes = scenes.map(s=>({
+            number: s.number??0,
+            title: s.title??'',
+            description: s.description??'',
+            durationSec: s.durationSec??minSec,
+            imagePrompt: s.imagePrompt??'',
+            imgDataUrl: null,
+            seed: -1,
+          }));
+          renderScenes();
+          renderImagesGrid();
+          toast(`Created ${state.scenes.length} scenes.`, 'success');
+        } else {
+          toast('Scenes: LLM returned non-JSON; cannot parse.', 'danger');
+        }
+      } catch(err){
+        console.error(err); toast('Scenes error: ' + err.message, 'danger');
+      } finally { clearBusy(el('btnGenScenes')); }
+    }
+
+    // Scenes table render
+    function renderScenes(){
+      sceneTable.innerHTML = '';
+      state.scenes.forEach((s, idx)=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><input class="form-control form-control-sm" type="number" value="${s.number||idx+1}" data-k="number" data-i="${idx}"></td>
+          <td><input class="form-control form-control-sm" type="text" value="${htmlEscape(s.title)}" data-k="title" data-i="${idx}"></td>
+          <td><input class="form-control form-control-sm" type="number" value="${s.durationSec||6}" data-k="durationSec" data-i="${idx}"></td>
+          <td><textarea class="form-control form-control-sm" rows="2" data-k="description" data-i="${idx}">${htmlEscape(s.description)}</textarea></td>
+          <td><textarea class="form-control form-control-sm code" rows="2" data-k="imagePrompt" data-i="${idx}">${htmlEscape(s.imagePrompt||'cinematic, highly detailed, photoreal, 8k')}</textarea></td>
+          <td>
+            <div class="btn-group btn-group-sm">
+              <button class="btn btn-outline-info" data-act="img" data-i="${idx}"><i class="bi bi-image"></i></button>
+              <button class="btn btn-outline-secondary" data-act="up" data-i="${idx}"><i class="bi bi-arrow-up"></i></button>
+              <button class="btn btn-outline-secondary" data-act="down" data-i="${idx}"><i class="bi bi-arrow-down"></i></button>
+              <button class="btn btn-outline-danger" data-act="del" data-i="${idx}"><i class="bi bi-x"></i></button>
+            </div>
+          </td>`;
+        sceneTable.appendChild(tr);
+      });
+
+      // Wire inputs
+      sceneTable.querySelectorAll('input, textarea').forEach(elm=>{
+        elm.addEventListener('input', (e)=>{
+          const i = parseInt(e.target.dataset.i,10);
+          const k = e.target.dataset.k;
+          let v = e.target.value;
+          if(['number','durationSec'].includes(k)) v = parseInt(v||0,10);
+          state.scenes[i][k] = v;
+        });
+      });
+
+      sceneTable.querySelectorAll('button[data-act]').forEach(btn=>{
+        btn.addEventListener('click', e=>{
+          const act = btn.dataset.act; const i = parseInt(btn.dataset.i,10);
+          if(act==='img'){ generateImageForScene(i); }
+          else if(act==='up' && i>0){ [state.scenes[i-1], state.scenes[i]] = [state.scenes[i], state.scenes[i-1]]; renderScenes(); renderImagesGrid(); }
+          else if(act==='down' && i<state.scenes.length-1){ [state.scenes[i+1], state.scenes[i]] = [state.scenes[i], state.scenes[i+1]]; renderScenes(); renderImagesGrid(); }
+          else if(act==='del'){ state.scenes.splice(i,1); renderScenes(); renderImagesGrid(); }
+        });
+      });
+    }
+
+    function renderImagesGrid(){
+      imagesGrid.innerHTML = '';
+      state.scenes.forEach((s, idx)=>{
+        const col = document.createElement('div'); col.className = 'col-12 col-md-6';
+        const imgHtml = s.imgDataUrl ? `<img src="${s.imgDataUrl}" class="img-thumb" alt="Scene ${idx+1}">` : `<div class="img-thumb d-grid place-items-center text-center bg-dark-subtle text-dark p-4"><div class="text-secondary">No image yet</div></div>`;
+        col.innerHTML = `
+          <div class="card h-100">
+            <div class="card-body">
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <div class="fw-semibold">Scene ${idx+1}</div>
+                <span class="badge text-bg-secondary">${s.durationSec || 0}s</span>
+              </div>
+              ${imgHtml}
+              <div class="small text-secondary mt-2">${htmlEscape(s.title)}</div>
+              <div class="d-flex gap-2 mt-3">
+                <button class="btn btn-sm btn-outline-info" data-g="one" data-i="${idx}"><i class="bi bi-image-fill me-1"></i> Generate</button>
+                <button class="btn btn-sm btn-outline-light" data-g="view" data-i="${idx}"><i class="bi bi-search me-1"></i> View</button>
+                <button class="btn btn-sm btn-outline-secondary" data-g="dl" data-i="${idx}"><i class="bi bi-download me-1"></i> PNG</button>
+              </div>
+            </div>
+          </div>`;
+        imagesGrid.appendChild(col);
+      });
+
+      imagesGrid.querySelectorAll('button[data-g]').forEach(btn=>{
+        btn.addEventListener('click', e=>{
+          const i = parseInt(btn.dataset.i,10);
+          const g = btn.dataset.g;
+          if(g==='one') generateImageForScene(i);
+          if(g==='view' && state.scenes[i].imgDataUrl){ window.open(state.scenes[i].imgDataUrl, '_blank'); }
+          if(g==='dl' && state.scenes[i].imgDataUrl){ downloadDataURI(state.scenes[i].imgDataUrl, `scene_${i+1}.png`); }
+        });
+      });
+    }
+
+    // --- Stable Diffusion (A1111) ---
+    async function sdTxt2Img(prompt, n=1, cfg={}){
+      const url = `${state.cfg.sdBase.replace(/\/$/,'')}/sdapi/v1/txt2img`;
+      const body = {
+        prompt,
+        negative_prompt: el('negPrompt').value,
+        width: parseInt(el('imgW').value||1280,10),
+        height: parseInt(el('imgH').value||720,10),
+        steps: parseInt(el('sdSteps').value||28,10),
+        sampler_name: state.cfg.sampler || undefined,
+        cfg_scale: 6.5,
+        batch_size: 1,
+        n_iter: n,
+        seed: cfg.seed ?? -1,
+        enable_hr: false,
+      };
+      const res = await http(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) }, 300000);
+      const json = await res.json();
+      if(!json || !json.images || !json.images.length) throw new Error('No image data returned');
+      const b64 = json.images[0];
+      const dataUrl = `data:image/png;base64,${b64}`;
+      const info = json.info ? JSON.parse(json.info) : {};
+      return { dataUrl, seed: info.seed ?? cfg.seed ?? -1 };
+    }
+
+    async function generateImageForScene(i){
+      if(!state.scenes[i]) return;
+      const s = state.scenes[i];
+      setBusyButtons(true);
+      try{
+        const { dataUrl, seed } = await sdTxt2Img(s.imagePrompt, 1, { seed: s.seed });
+        s.imgDataUrl = dataUrl; s.seed = seed;
+        renderImagesGrid();
+        toast(`Image generated for scene ${i+1}.`, 'success');
+      } catch(err){
+        console.error(err); toast('Image error: ' + err.message + '. Ensure A1111 API is running and CORS allows this origin.', 'danger');
+      } finally { setBusyButtons(false); }
+    }
+
+    async function generateAllImages(){
+      if(!state.scenes.length){ toast('No scenes available.', 'warning'); return; }
+      state.aborter = new AbortController();
+      setBusy(el('btnGenAllImages'));
+      for(let i=0;i<state.scenes.length;i++){
+        if(state.aborter.signal.aborted) break;
+        await generateImageForScene(i);
+      }
+      clearBusy(el('btnGenAllImages'));
+    }
+
+    // --- Build Illustrated Script ---
+    function buildScript(){
+      const title = el('title').value.trim();
+      const story = el('story').value.trim();
+      if(!title || !story){ toast('Please generate or enter title & story first.', 'warning'); return; }
+      // Preview HTML
+      const html = `
+        <article class="container py-3">
+          <header class="mb-4">
+            <h2 class="fw-bold">${htmlEscape(title)}</h2>
+            <p class="text-secondary">Aspect ${state.aspect} • Scenes: ${state.scenes.length}</p>
+          </header>
+          <section class="mb-4"><p style="white-space:pre-wrap">${htmlEscape(story)}</p></section>
+          ${state.scenes.map((s, idx)=>`
+            <section class="row g-3 align-items-start mb-4">
+              <div class="col-12 col-md-5">
+                ${s.imgDataUrl ? `<img src="${s.imgDataUrl}" class="img-fluid rounded-3 border" alt="Scene ${idx+1}">` : `<div class='p-5 text-center text-secondary border rounded-3'>No image</div>`}
+              </div>
+              <div class="col-12 col-md-7">
+                <h5 class="mb-1">Scene ${idx+1}: ${htmlEscape(s.title||'Untitled')}</h5>
+                <div class="small text-secondary mb-2">~${s.durationSec||0}s</div>
+                <p>${htmlEscape(s.description||'')}</p>
+                <details class="small">
+                  <summary class="pointer">Image Prompt</summary>
+                  <pre class="code">${htmlEscape(s.imagePrompt||'')}</pre>
+                </details>
+              </div>
+            </section>`).join('')}
+        </article>`;
+      scriptPreview.innerHTML = html;
+      el('btnDownloadHTML').disabled = false;
+      el('btnDownloadJSON').disabled = false;
+      toast('Illustrated script built.', 'success');
+    }
+
+    function downloadHTML(){
+      const doc = `<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width, initial-scale=1'><title>${htmlEscape(el('title').value||'SPAI Script')}</title><link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css' rel='stylesheet'></head><body>${scriptPreview.innerHTML}</body></html>`;
+      const blob = new Blob([doc], {type:'text/html'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href=url; a.download='spai_script.html'; a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function downloadJSON(){
+      const data = { idea: state.idea, title: el('title').value, story: el('story').value, aspect: state.aspect, scenes: state.scenes };
+      const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href=url; a.download='spai_project.json'; a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // Utilities
+    function htmlEscape(s){ return (s||'').replace(/[&<>\"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+    function downloadDataURI(uri, filename){ const a = document.createElement('a'); a.href = uri; a.download = filename; a.click(); }
+    function setBusy(btn){ btn.disabled = true; btn.dataset.orig = btn.innerHTML; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Working…'; }
+    function clearBusy(btn){ if(!btn) return; btn.disabled = false; if(btn.dataset.orig){ btn.innerHTML = btn.dataset.orig; delete btn.dataset.orig; } }
+    function setBusyButtons(flag){ document.querySelectorAll('button').forEach(b=> b.disabled = flag); }
+
+    // Event wiring
+    el('btnSaveSettings').addEventListener('click', saveSettings);
+    el('btnDefaults').addEventListener('click', resetDefaults);
+    el('btnGenStory').addEventListener('click', doGenerateStory);
+    el('btnGenScenes').addEventListener('click', ()=> doGenerateScenes(false));
+    el('btnScenesFromTitle').addEventListener('click', ()=> doGenerateScenes(true));
+    el('btnAddScene').addEventListener('click', ()=>{ state.scenes.push({ number: state.scenes.length+1, title:'New Scene', description:'', durationSec:6, imagePrompt:'', imgDataUrl:null, seed:-1 }); renderScenes(); renderImagesGrid(); });
+    el('btnClearScenes').addEventListener('click', ()=>{ state.scenes = []; renderScenes(); renderImagesGrid(); });
+    el('btnGenAllImages').addEventListener('click', generateAllImages);
+    el('btnStop').addEventListener('click', ()=>{ if(state.aborter) state.aborter.abort(); toast('Stopped.', 'warning'); });
+    el('btnBuildScript').addEventListener('click', buildScript);
+    el('btnDownloadHTML').addEventListener('click', downloadHTML);
+    el('btnDownloadJSON').addEventListener('click', downloadJSON);
+    el('aspect').addEventListener('change', ()=>{
+      state.aspect = el('aspect').value; const {w,h} = aspectToWH(state.aspect); el('imgW').value = w; el('imgH').value = h; syncSettingsUI();
+    });
+    el('btnIdeaSample').addEventListener('click', ()=>{
+      el('idea').value = 'An elephant named Mithu wanders into a bustling Kerala town and gently helps people slow down and smile, one tiny act at a time.';
+    });
+    el('btnClearAll').addEventListener('click', ()=>{ el('idea').value=''; el('title').value=''; el('story').value=''; state.scenes=[]; renderScenes(); renderImagesGrid(); scriptPreview.innerHTML=''; el('btnDownloadHTML').disabled=true; el('btnDownloadJSON').disabled=true; toast('Cleared.', 'info'); });
+
+    // Test connections
+    el('btnTest').addEventListener('click', async()=>{
+      try{
+        const t1 = http(state.cfg.ollamaBase.replace(/\/$/,'') + '/api/tags', {}, 5000).then(r=>r.json()).then(j=> j.models?.[0]?.name || 'OK');
+        const t2 = http(state.cfg.sdBase.replace(/\/$/,'') + '/sdapi/v1/options', {}, 5000).then(r=>r.json()).then(()=> 'OK');
+        const [a,b] = await Promise.allSettled([t1,t2]);
+        toast('Ollama: ' + (a.status==='fulfilled'? a.value : 'FAILED'), a.status==='fulfilled'?'success':'danger');
+        toast('Stable Diffusion: ' + (b.status==='fulfilled'? b.value : 'FAILED'), b.status==='fulfilled'?'success':'danger');
+      } catch(err){ toast('Test failed: ' + err.message, 'danger'); }
+    });
+
+    // Save story edits
+    el('title').addEventListener('input', e=> state.title = e.target.value);
+    el('story').addEventListener('input', e=> state.story = e.target.value);
+
+    // Startup
+    (function init(){ syncSettingsUI(); renderScenes(); })();
+  </script>
+</body>
+</html>
